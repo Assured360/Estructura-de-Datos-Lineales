@@ -40,7 +40,7 @@ def traducir_movimiento(mov):
 class RubikApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Rubik Solver GUI")
+        self.root.title("Rubik Solver GUI - Motor BFS")
         self.root.configure(bg='#F0F0F0')
         self.root.state('zoomed') # Maximizar ventana
         
@@ -77,9 +77,14 @@ class RubikApp:
                                      bg='#2196F3', fg='white', command=self.reset_cube)
         self.reset_btn.pack(side=tk.LEFT, padx=5)
         
+        # Etiqueta de resultado ubicada debajo de los botones principales para que no se corte
+        self.result_lbl = tk.Label(self.root, text="Ingresa el estado de tu cubo interactuando con los cuadros.\n(El algoritmo BFS ha sido activado exitosamente)", 
+                                   font=('Arial', 12), bg='#F0F0F0', wraplength=450)
+        self.result_lbl.pack(pady=5)
+        
         # Controles de paso a paso (ocultos por defecto)
         self.controls_frame = tk.Frame(self.root, bg='#F0F0F0')
-        self.controls_frame.pack(pady=10)
+        self.controls_frame.pack(pady=5)
         
         self.prev_btn = tk.Button(self.controls_frame, text="⏮ Anterior", font=('Arial', 12), command=self.paso_anterior)
         self.prev_btn.pack(side=tk.LEFT, padx=5)
@@ -102,11 +107,7 @@ class RubikApp:
         # Barra de progreso
         self.progress_var = tk.DoubleVar()
         self.progress_bar = ttk.Progressbar(self.root, orient=tk.HORIZONTAL, length=400, mode='determinate', variable=self.progress_var)
-        self.progress_bar.pack(pady=10)
-        
-        self.result_lbl = tk.Label(self.root, text="Ingresa el estado de tu cubo interactuando con los cuadros.", 
-                                   font=('Arial', 12), bg='#F0F0F0', wraplength=450)
-        self.result_lbl.pack(pady=10)
+        self.progress_bar.pack(pady=5)
         
         self.ocultar_controles()
 
@@ -148,7 +149,7 @@ class RubikApp:
                 if self.is_valid_cell(r, c):
                     # Valor inicial
                     val = estado_base[r][c]
-                    btn = tk.Button(self.grid_frame, width=4, height=2, bg=COLORS[val], 
+                    btn = tk.Button(self.grid_frame, width=3, height=1, bg=COLORS[val], 
                                     activebackground=COLORS[val], relief="groove",
                                     command=lambda r=r, c=c: self.change_color(r, c))
                     btn.grid(row=r, column=c, padx=1, pady=1)
@@ -165,7 +166,7 @@ class RubikApp:
         
         self.palette_buttons = {}
         for color_code in ORDER:
-            btn = tk.Button(self.palette_frame, width=4, height=2, bg=COLORS[color_code],
+            btn = tk.Button(self.palette_frame, width=3, height=1, bg=COLORS[color_code],
                             activebackground=COLORS[color_code], 
                             relief="sunken" if color_code == self.selected_color else "raised",
                             bd=3 if color_code == self.selected_color else 1,
