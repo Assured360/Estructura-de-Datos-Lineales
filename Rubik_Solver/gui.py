@@ -272,13 +272,13 @@ class RubikApp:
             'z1f', 'z2f', 'z3f', 'z1b', 'z2b', 'z3b'
         ]
         
-        # Aplicar 20 movimientos aleatorios
-        for _ in range(20):
+        # Aplicar 5 movimientos aleatorios
+        for _ in range(5):
             m = random.choice(movimientos)
             matriz = rbk.mover(m, matriz)
             
         self.actualizar_cuadricula(matriz)
-        self.result_lbl.config(text="Cubo mezclado con 20 movimientos aleatorios.", fg="black")
+        self.result_lbl.config(text="Cubo mezclado con 5 movimientos aleatorios.", fg="black")
 
     def reset_cube(self):
         self.ocultar_controles()

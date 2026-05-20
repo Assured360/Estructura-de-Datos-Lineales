@@ -86,7 +86,7 @@ def turn_B(matriz):
     matriz[3][0], matriz[4][0], matriz[5][0] = u0, u1, u2
 
 def mover(m, cubo):
-    nuevo_cubo = copy.deepcopy(cubo)
+    nuevo_cubo = [fila[:] for fila in cubo]
     
     if not m or len(m) < 3:
         return nuevo_cubo
@@ -104,99 +104,65 @@ def mover(m, cubo):
 
     return nuevo_cubo
 
-import kociemba
-
-def to_kociemba(matriz):
-    # En ESTADO_RESUELTO, los centros están en:
-    # U: (1,4)
-    # R: (4,7)
-    # F: (4,4)
-    # D: (7,4)
-    # L: (4,1)
-    # B: (4,10)
-    
-    # Validar que no haya cuadros vacíos
-    centros = [
-        matriz[1][4], matriz[4][7], matriz[4][4],
-        matriz[7][4], matriz[4][1], matriz[4][10]
+def obtener_hijos(nodo_actual):
+    hijos = []
+    movimientos_posibles = [
+        'x1r', 'x2r', 'x3r', 'x1l', 'x2l', 'x3l',
+        'y1u', 'y2u', 'y3u', 'y1d', 'y2d', 'y3d',
+        'z1f', 'z2f', 'z3f', 'z1b', 'z2b', 'z3b'
     ]
-    if any(c == "" for c in centros):
-        raise ValueError("El cubo tiene colores incompletos en los centros.")
-        
-    color_to_face = {
-        matriz[1][4]: 'U',
-        matriz[4][7]: 'R',
-        matriz[4][4]: 'F',
-        matriz[7][4]: 'D',
-        matriz[4][1]: 'L',
-        matriz[4][10]: 'B'
-    }
-    
-    s = ""
-    try:
-        # U face (0..2, 3..5)
-        for r in range(0, 3):
-            for c in range(3, 6):
-                s += color_to_face[matriz[r][c]]
-        # R face (3..5, 6..8)
-        for r in range(3, 6):
-            for c in range(6, 9):
-                s += color_to_face[matriz[r][c]]
-        # F face (3..5, 3..5)
-        for r in range(3, 6):
-            for c in range(3, 6):
-                s += color_to_face[matriz[r][c]]
-        # D face (6..8, 3..5)
-        for r in range(6, 9):
-            for c in range(3, 6):
-                s += color_to_face[matriz[r][c]]
-        # L face (3..5, 0..2)
-        for r in range(3, 6):
-            for c in range(0, 3):
-                s += color_to_face[matriz[r][c]]
-        # B face (3..5, 9..11)
-        for r in range(3, 6):
-            for c in range(9, 12):
-                s += color_to_face[matriz[r][c]]
-    except KeyError:
-        raise ValueError("Hay colores en las piezas que no coinciden con ningún centro.")
-        
-    return s
+    for m in movimientos_posibles:
+        estado_hijo = mover(m, nodo_actual)
+        hijos.append((m, estado_hijo))
+    return hijos
 
-def mapear_movimientos_kociemba(koc_solution):
-    # Kociemba devuelve algo como: "U R2 F B R B2 R U2 L B2 R U' D' R2 F R' L B2 U2 F2"
-    if not koc_solution.strip():
-        return []
+def bfs(estado_inicial, progress_callback=None, max_nodos=150000):
+    estado_inicial_tupla = tuple(tuple(fila) for fila in estado_inicial)
+    estado_final_tupla = tuple(tuple(fila) for fila in ESTADO_RESUELTO)
+    
+    q = deque()
+    # visitados almacena: estado_tupla -> (padre_tupla, movimiento)
+    visitados = {}
+    
+    q.append(estado_inicial_tupla)
+    visitados[estado_inicial_tupla] = (None, None)
+    
+    nodo_ganador = None
+    nodos_visitados = 0
+    
+    while q:
+        actual_tupla = q.popleft()
+        nodos_visitados += 1
         
-    moves = koc_solution.strip().split()
-    path = []
-    
-    mapa_caras = {
-        'R': 'x', 'L': 'x',
-        'U': 'y', 'D': 'y',
-        'F': 'z', 'B': 'z'
-    }
-    
-    mapa_eje_cara = {
-        'R': 'r', 'L': 'l',
-        'U': 'u', 'D': 'd',
-        'F': 'f', 'B': 'b'
-    }
-    
-    for m in moves:
-        cara = m[0]
-        eje = mapa_caras[cara]
-        sub = mapa_eje_cara[cara]
+        if progress_callback and nodos_visitados % 1000 == 0:
+            progress_callback(nodos_visitados, max_nodos)
+            
+        if nodos_visitados >= max_nodos:
+            break
+            
+        if actual_tupla == estado_final_tupla:
+            nodo_ganador = actual_tupla
+            break
+            
+        actual_matriz = [list(fila) for fila in actual_tupla]
+        hijos = obtener_hijos(actual_matriz)
         
-        turns = 1
-        if len(m) > 1:
-            if m[1] == '2':
-                turns = 2
-            elif m[1] == "'":
-                turns = 3
+        for m, estado_hijo in hijos:
+            hijo_tupla = tuple(tuple(fila) for fila in estado_hijo)
+            if hijo_tupla not in visitados:
+                visitados[hijo_tupla] = (actual_tupla, m)
+                q.append(hijo_tupla)
                 
-        movimiento_final = f"{eje}{turns}{sub}"
-        path.append(movimiento_final)
+    path = []
+    if nodo_ganador is not None:
+        actual = nodo_ganador
+        while True:
+            padre, mov = visitados[actual]
+            if mov is None:
+                break
+            path.append(mov)
+            actual = padre
+        path.reverse()
         
     return path
 
@@ -206,23 +172,9 @@ def resolver_cubo(estado_inicial, progress_callback=None):
         return []
         
     if progress_callback:
-        progress_callback(10, 100)
+        progress_callback(1, 100) # Inicializando
         
-    s = to_kociemba(estado_inicial)
-    
-    if progress_callback:
-        progress_callback(50, 100)
-        
-    try:
-        # Resolvemos con kociemba
-        koc_solution = kociemba.solve(s)
-    except ValueError as e:
-        raise ValueError("Estado del cubo inválido o irresoluble. Verifica los colores.")
-        
-    if progress_callback:
-        progress_callback(90, 100)
-        
-    path = mapear_movimientos_kociemba(koc_solution)
+    path = bfs(estado_inicial, progress_callback)
     
     if progress_callback:
         progress_callback(100, 100)
