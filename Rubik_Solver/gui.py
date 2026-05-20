@@ -5,15 +5,15 @@ import copy
 import random
 import rbk
 
-# Mapeo de letras a colores reales para la interfaz
+# Mapeo de letras a colores reales para la interfaz (Colores más vibrantes)
 COLORS = {
-    'W': 'white',
-    'O': '#FFA500', # Naranja
-    'G': 'green',
-    'R': 'red',
-    'Y': 'yellow',
-    'B': 'blue',
-    '': '#E0E0E0' # Gris claro para celdas vacías
+    'W': '#FFFFFF', # Blanco
+    'O': '#FF9800', # Naranja brillante
+    'G': '#4CAF50', # Verde
+    'R': '#F44336', # Rojo
+    'Y': '#FFEB3B', # Amarillo
+    'B': '#2196F3', # Azul
+    '': '#F0F0F0'   # Gris fondo
 }
 
 # El orden en el que rotarán los colores al hacer clic
@@ -43,6 +43,9 @@ class RubikApp:
         self.root.title("Rubik Solver GUI - Motor BFS")
         self.root.configure(bg='#F0F0F0')
         self.root.state('zoomed') # Maximizar ventana
+        
+        # Truco para crear botones cuadrados perfectos en píxeles
+        self.pixel_virtual = tk.PhotoImage(width=1, height=1)
         
         self.buttons = {}
         self.selected_color = 'W' # Color seleccionado por defecto
@@ -149,15 +152,20 @@ class RubikApp:
                 if self.is_valid_cell(r, c):
                     # Valor inicial
                     val = estado_base[r][c]
-                    btn = tk.Button(self.grid_frame, width=3, height=1, bg=COLORS[val], 
-                                    activebackground=COLORS[val], relief="groove",
+                    
+                    # Contenedor negro para simular el plástico del cubo
+                    cell_frame = tk.Frame(self.grid_frame, bg='#1C1C1C', bd=0)
+                    cell_frame.grid(row=r, column=c, padx=1, pady=1)
+                    
+                    btn = tk.Button(cell_frame, image=self.pixel_virtual, width=32, height=32, compound="c",
+                                    bg=COLORS[val], activebackground=COLORS[val], relief="flat", bd=0, cursor="hand2",
                                     command=lambda r=r, c=c: self.change_color(r, c))
-                    btn.grid(row=r, column=c, padx=1, pady=1)
+                    btn.pack(padx=2, pady=2)
                     
                     self.buttons[(r, c)] = {'widget': btn, 'color': val}
                 else:
                     # Espacios sin piezas del cubo
-                    lbl = tk.Frame(self.grid_frame, width=35, height=40, bg='#F0F0F0')
+                    lbl = tk.Frame(self.grid_frame, width=36, height=36, bg='#F0F0F0')
                     lbl.grid(row=r, column=c, padx=1, pady=1)
 
     def build_palette(self):
@@ -166,20 +174,26 @@ class RubikApp:
         
         self.palette_buttons = {}
         for color_code in ORDER:
-            btn = tk.Button(self.palette_frame, width=3, height=1, bg=COLORS[color_code],
-                            activebackground=COLORS[color_code], 
-                            relief="sunken" if color_code == self.selected_color else "raised",
-                            bd=3 if color_code == self.selected_color else 1,
+            cell_frame = tk.Frame(self.palette_frame, bg='#1C1C1C', bd=0)
+            cell_frame.pack(side=tk.LEFT, padx=3)
+            
+            btn = tk.Button(cell_frame, image=self.pixel_virtual, width=32, height=32, compound="c",
+                            bg=COLORS[color_code], activebackground=COLORS[color_code], 
+                            relief="flat", bd=0, cursor="hand2",
                             command=lambda c=color_code: self.select_color(c))
-            btn.pack(side=tk.LEFT, padx=2)
-            self.palette_buttons[color_code] = btn
+            
+            # Si está seleccionado, le damos un borde especial o color diferente al contenedor?
+            # En su lugar, usaremos el padding del cell_frame para destacar
+            btn.pack(padx=2 if color_code != self.selected_color else 4, 
+                     pady=2 if color_code != self.selected_color else 4)
+            self.palette_buttons[color_code] = {'btn': btn, 'frame': cell_frame}
 
     def select_color(self, color_code):
         self.selected_color = color_code
-        for c, btn in self.palette_buttons.items():
-            # Remarcar visualmente el color seleccionado
-            btn.config(relief="sunken" if c == color_code else "raised", 
-                       bd=3 if c == color_code else 1)
+        for c, item in self.palette_buttons.items():
+            # Remarcar visualmente el color seleccionado haciendo el sticker más pequeño (borde negro más grueso)
+            item['btn'].pack_configure(padx=4 if c == color_code else 2, 
+                                       pady=4 if c == color_code else 2)
 
     def change_color(self, r, c):
         self.ocultar_controles() # Al editar manualmente, cancelar solución activa
