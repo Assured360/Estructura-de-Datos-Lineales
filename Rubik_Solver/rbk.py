@@ -120,51 +120,80 @@ def bfs(estado_inicial, progress_callback=None, max_nodos=150000):
     estado_inicial_tupla = tuple(tuple(fila) for fila in estado_inicial)
     estado_final_tupla = tuple(tuple(fila) for fila in ESTADO_RESUELTO)
     
-    q = deque()
-    # visitados almacena: estado_tupla -> (padre_tupla, movimiento)
-    visitados = {}
+    if estado_inicial_tupla == estado_final_tupla:
+        return []
+        
+    q_start = deque([estado_inicial_tupla])
+    q_end = deque([estado_final_tupla])
     
-    q.append(estado_inicial_tupla)
-    visitados[estado_inicial_tupla] = (None, None)
+    vis_start = {estado_inicial_tupla: (None, None)}
+    vis_end = {estado_final_tupla: (None, None)}
     
-    nodo_ganador = None
     nodos_visitados = 0
+    interseccion = None
     
-    while q:
-        actual_tupla = q.popleft()
+    while q_start and q_end:
+        # Expandir desde el inicio
+        actual_s = q_start.popleft()
         nodos_visitados += 1
         
         if progress_callback and nodos_visitados % 1000 == 0:
             progress_callback(nodos_visitados, max_nodos)
             
-        if nodos_visitados >= max_nodos:
-            break
-            
-        if actual_tupla == estado_final_tupla:
-            nodo_ganador = actual_tupla
-            break
-            
-        actual_matriz = [list(fila) for fila in actual_tupla]
-        hijos = obtener_hijos(actual_matriz)
-        
-        for m, estado_hijo in hijos:
+        actual_matriz_s = [list(fila) for fila in actual_s]
+        for m, estado_hijo in obtener_hijos(actual_matriz_s):
             hijo_tupla = tuple(tuple(fila) for fila in estado_hijo)
-            if hijo_tupla not in visitados:
-                visitados[hijo_tupla] = (actual_tupla, m)
-                q.append(hijo_tupla)
-                
-    path = []
-    if nodo_ganador is not None:
-        actual = nodo_ganador
-        while True:
-            padre, mov = visitados[actual]
-            if mov is None:
-                break
-            path.append(mov)
-            actual = padre
-        path.reverse()
+            if hijo_tupla not in vis_start:
+                vis_start[hijo_tupla] = (actual_s, m)
+                q_start.append(hijo_tupla)
+                if hijo_tupla in vis_end:
+                    interseccion = hijo_tupla
+                    break
+        if interseccion or nodos_visitados >= max_nodos: break
         
-    return path
+        # Expandir desde el final (meta)
+        actual_e = q_end.popleft()
+        nodos_visitados += 1
+        
+        if progress_callback and nodos_visitados % 1000 == 0:
+            progress_callback(nodos_visitados, max_nodos)
+            
+        actual_matriz_e = [list(fila) for fila in actual_e]
+        for m, estado_hijo in obtener_hijos(actual_matriz_e):
+            hijo_tupla = tuple(tuple(fila) for fila in estado_hijo)
+            if hijo_tupla not in vis_end:
+                vis_end[hijo_tupla] = (actual_e, m)
+                q_end.append(hijo_tupla)
+                if hijo_tupla in vis_start:
+                    interseccion = hijo_tupla
+                    break
+        if interseccion or nodos_visitados >= max_nodos: break
+                
+    if interseccion is None:
+        return []
+        
+    # Reconstruir camino desde el inicio
+    path_start = []
+    actual = interseccion
+    while True:
+        padre, mov = vis_start[actual]
+        if mov is None: break
+        path_start.append(mov)
+        actual = padre
+    path_start.reverse()
+    
+    # Reconstruir camino desde la meta (e invertir los movimientos)
+    path_end = []
+    actual = interseccion
+    while True:
+        padre, mov = vis_end[actual]
+        if mov is None: break
+        # Invertir el movimiento: '1' -> '3', '3' -> '1', '2' -> '2'
+        mov_inv = mov[0] + ('3' if mov[1] == '1' else '1' if mov[1] == '3' else '2') + mov[2]
+        path_end.append(mov_inv)
+        actual = padre
+        
+    return path_start + path_end
 
 def resolver_cubo(estado_inicial, progress_callback=None):
     if es_estado_final(estado_inicial):
